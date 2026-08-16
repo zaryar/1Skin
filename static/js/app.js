@@ -590,6 +590,12 @@ function renderLoadouts() {
 
     emptyState.classList.add('hidden');
     container.innerHTML = filteredList.map(champ => {
+        // If champion has only 1 skin, automatically mark it as selected / equipped
+        if (champ.skins && champ.skins.length === 1 && !champ.selectedSkinId) {
+            champ.selectedSkinId = champ.skins[0].id;
+            champ.isConfigured = true;
+        }
+
         const skinsHtml = champ.skins.map(skin => {
             const isSelected = (champ.selectedSkinId === skin.id);
             const badgeHtml = isSelected ? '<div class="skin-tile-badge">Equipped</div>' : '';
@@ -598,6 +604,7 @@ function renderLoadouts() {
                 <div class="skin-tile ${isSelected ? 'selected' : ''}" 
                      id="skin-tile-${skin.id}" 
                      onclick="equipSkin('${champ.id}', ${skin.id}, '${skin.name.replace(/'/g, "\\'")}', '${champ.name.replace(/'/g, "\\'")}')">
+
                     <div class="skin-tile-img-wrap">
                         <img src="/lcu-img/${skin.img}" alt="${skin.name}" loading="lazy" onerror="this.src='/lcu-img/${champ.img}'">
                         ${badgeHtml}

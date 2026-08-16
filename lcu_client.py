@@ -349,10 +349,12 @@ def get_loadouts_data():
             if not owned_skins:
                 continue
 
-            # Auto-assign single skin if not already set
-            if len(owned_skins) == 1 and champ_id_str not in loadout:
-                loadout[champ_id_str] = owned_skins[0]["id"]
-                loadout_changed = True
+            # Auto-assign single skin if exactly 1 skin is owned
+            if len(owned_skins) == 1:
+                single_skin_id = owned_skins[0]["id"]
+                if loadout.get(champ_id_str) != single_skin_id:
+                    loadout[champ_id_str] = single_skin_id
+                    loadout_changed = True
 
             selected_skin_id = loadout.get(champ_id_str)
             
@@ -362,7 +364,7 @@ def get_loadouts_data():
                 "img": champ.get("squarePortraitPath") or champ.get("portraitPath") or f"/lol-game-data/assets/v1/champion-icons/{champ_id}.png",
                 "skins": owned_skins,
                 "selectedSkinId": selected_skin_id,
-                "isConfigured": (champ_id_str in loadout and selected_skin_id is not None)
+                "isConfigured": (selected_skin_id is not None and selected_skin_id in [s["id"] for s in owned_skins])
             }
 
             if champ_entry["isConfigured"]:
@@ -372,6 +374,7 @@ def get_loadouts_data():
 
         if loadout_changed:
             save_loadout(loadout)
+
 
         # Sort alphabetically by name
         configured_list.sort(key=lambda x: x["name"])
@@ -506,12 +509,30 @@ def auto_equip_monitor_step(last_champ_state, sound_enabled=True):
         if champ_id != last_champ_state:
             # New champion detected!
             loadout = load_loadout()
-            if champ_id in loadout:
-                target_skin = loadout[champ_id]
-                if current_skin != target_skin:
-                    patch_url = f"{base_url}/lol-champ-select/v1/session/my-selection"
-                    session.patch(patch_url, json={"selectedSkinId": target_skin})
-                    logger.info(f"[Auto-Equip] Equipped skin {target_skin} for champion {champ_id}")
+            target_skin = loadout.get(champ_id)
+
+            if not target_skin:
+                # If not explicitly in loadout, check if user owns exactly 1 skin for this champ
+                try:
+                    summoner_res = session.get(f"{base_url}/lol-summoner/v1/current-summoner", timeout=1)
+                    if summoner_res.status_code == 200:
+                        s_id = summoner_res.json().get("summonerId")
+                        c_res = session.get(f"{base_url}/lol-champions/v1/inventories/{s_id}/champions/{champ_id}", timeout=1)
+                        if c_res.status_code == 200:
+                            c_data = c_res.json()
+                            owned_skins = [s for s in c_data.get("skins", []) if s.get("ownership", {}).get("owned") and not s.get("isBase")]
+                            if len(owned_skins) == 1:
+                                target_skin = owned_skins[0]["id"]
+                                loadout[champ_id] = target_skin
+                                save_loadout(loadout)
+                except Exception:
+                    pass
+
+            if target_skin and current_skin != target_skin:
+                patch_url = f"{base_url}/lol-champ-select/v1/session/my-selection"
+                session.patch(patch_url, json={"selectedSkinId": target_skin})
+                logger.info(f"[Auto-Equip] Equipped skin {target_skin} for champion {champ_id}")
+
 
             if sound_enabled:
                 try:
