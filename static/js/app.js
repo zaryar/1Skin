@@ -303,6 +303,7 @@ function renderCrafter() {
 }
 
 async function craftSkin(lootId, skinName, cost, champId) {
+    const card = document.getElementById(`crafter-card-champ-${champId}`);
     const btn = document.getElementById(`btn-craft-${lootId}`);
     if (btn) {
         btn.disabled = true;
@@ -320,11 +321,48 @@ async function craftSkin(lootId, skinName, cost, champId) {
         if (res.ok && data.success) {
             showToast('Skin Unlocked! ✨', `${skinName} was permanently added to your collection!`, 'success');
             
-            // Remove shard row or refresh
-            const shardRow = document.getElementById(`shard-row-${lootId}`);
-            if (shardRow) shardRow.remove();
+            // 1. Instantly animate and remove the entire champion card (immediate disappearance)
+            if (card) {
+                card.style.transition = 'all 0.25s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    if (card) card.remove();
+                }, 250);
+            }
 
-            // Refresh data
+            // 2. Remove champ from local state immediately
+            if (state.crafterData && state.crafterData.champions) {
+                const champIdx = state.crafterData.champions.findIndex(c => c.champ.id === champId);
+                if (champIdx !== -1) {
+                    state.crafterData.champions.splice(champIdx, 1);
+                    
+                    let remainingShards = 0;
+                    state.crafterData.champions.forEach(c => remainingShards += c.shards.length);
+                    
+                    const badge = document.getElementById('badge-crafter-count');
+                    if (badge) badge.innerText = remainingShards;
+                    
+                    const totalSkinsStat = document.getElementById('crafter-total-skins');
+                    if (totalSkinsStat) totalSkinsStat.innerText = `${remainingShards} Skins`;
+
+                    if (state.crafterData.champions.length === 0) {
+                        const emptyState = document.getElementById('crafter-empty-state');
+                        if (emptyState) emptyState.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // 3. Optimistically deduct Orange Essence from header and banner
+            if (state.status && state.status.currencies && cost > 0) {
+                state.status.currencies.oe = Math.max(0, (state.status.currencies.oe || 0) - cost);
+                const oeHeader = document.getElementById('header-oe-val');
+                if (oeHeader) oeHeader.innerText = Number(state.status.currencies.oe).toLocaleString();
+                const oeBanner = document.getElementById('crafter-avail-oe');
+                if (oeBanner) oeBanner.innerText = `${Number(state.status.currencies.oe).toLocaleString()} OE`;
+            }
+
+            // 4. Background refresh to sync with League client
             refreshAllData();
         } else {
             showToast('Unlock Failed', data.error || 'Could not complete the craft recipe.', 'error');
