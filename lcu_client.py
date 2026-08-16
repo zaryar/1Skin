@@ -4,8 +4,10 @@ import logging
 import os
 import requests
 import sys
+import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 LOCKFILE_PATH = r"C:\Riot Games\League of Legends\lockfile"
 

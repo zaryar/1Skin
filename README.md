@@ -22,11 +22,12 @@
 
 No Python, coding knowledge, or command line required!
 
-1. Go to the **[Latest Release (v1.0.0)](https://github.com/zaryar/1Skin/releases/tag/v1.0.0)**.
-2. Download **`HexSkinStudio_v1.0.0_Windows.zip`**.
+1. Go to the **[Latest Release (v1.0.1)](https://github.com/zaryar/1Skin/releases/tag/v1.0.1)**.
+2. Download **`HexSkinStudio_v1.0.1_Windows.zip`**.
 3. Extract the ZIP folder anywhere on your PC.
 4. Make sure League of Legends is running, then double-click **`HexSkinStudio.exe`**.
 5. Your browser will automatically pop open with the HexSkin Studio dashboard!
+
 
 > [!TIP]
 > **Windows SmartScreen Note:** Because this is an open-source, community-built `.exe` without an expensive paid corporate certificate, Windows Defender / SmartScreen might show a blue prompt on the first launch. Simply click **"More info"** &rarr; **"Run anyway"**.

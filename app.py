@@ -229,14 +229,22 @@ def open_browser(port):
         logger.debug(f"Could not open browser automatically: {e}")
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    print(f"\n=======================================================")
-    print(f" [HexSkin] Studio Server running on: http://127.0.0.1:{port}")
-    print(f"=======================================================\n")
-    
-    # Auto-open browser in background for convenient 1-click start
-    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
-    
-    app.run(debug=False, host="127.0.0.1", port=port, use_reloader=False)
+    try:
+        port = int(os.environ.get("PORT", 5000))
+        print(f"\n=======================================================")
+        print(f" [HexSkin] Studio Server running on: http://127.0.0.1:{port}")
+        print(f" [HexSkin] Opening web browser automatically...")
+        print(f"=======================================================\n")
+        print("Keep this window open while using HexSkin Studio.")
+        print("Press Ctrl+C to close.\n")
+        
+        # Auto-open browser in background for convenient 1-click start
+        threading.Thread(target=open_browser, args=(port,), daemon=True).start()
+        
+        app.run(debug=False, host="127.0.0.1", port=port, use_reloader=False)
+    except Exception as e:
+        print(f"\n[FATAL ERROR] {e}")
+        input("\nPress Enter to exit...")
+
 
 
