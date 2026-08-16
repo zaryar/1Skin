@@ -3,13 +3,33 @@
   <p><strong>LoL Loot Crafter, Disenchanter, Auto-Equipper & Arena Bravery Synchronizer</strong></p>
 
   <p>
+    <img src="https://img.shields.io/badge/Vibe--Coded-100%25-FF69B4?style=flat&logo=sparkles&logoColor=white" alt="Vibe Coded" />
+    <img src="https://img.shields.io/badge/Fun%20Project-Non--Commercial-blueviolet?style=flat" alt="Fun Project" />
     <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white" alt="Python Version" />
-    <img src="https://img.shields.io/badge/Flask-3.0+-000000?style=flat&logo=flask&logoColor=white" alt="Flask" />
     <img src="https://img.shields.io/badge/League%20Client-LCU%20API-C8AA6E?style=flat&logo=leagueoflegends&logoColor=white" alt="LCU API" />
     <img src="https://img.shields.io/badge/Vanguard%20Safe-100%25-2ECC71?style=flat" alt="Vanguard Safe" />
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
   </p>
 </div>
+
+> [!NOTE]
+> ### 🎮 A Note from the Author
+> This project is **100% "Vibe Coded"** and built purely as a **fun community project**. It is completely free, open-source, and non-commercial. I do not earn any money with this. It was created simply to fix the frustrating Arena Bravery skin selection issue and make Hextech loot crafting fast and effortless for League players! ✨
+
+---
+
+## 🚀 1-Click Download (For Beginners)
+
+No Python, coding knowledge, or command line required!
+
+1. Go to the **[Latest Release (v1.0.0)](https://github.com/zaryar/1Skin/releases/tag/v1.0.0)**.
+2. Download **`HexSkinStudio_v1.0.0_Windows.zip`**.
+3. Extract the ZIP folder anywhere on your PC.
+4. Make sure League of Legends is running, then double-click **`HexSkinStudio.exe`**.
+5. Your browser will automatically pop open with the HexSkin Studio dashboard!
+
+> [!TIP]
+> **Windows SmartScreen Note:** Because this is an open-source, community-built `.exe` without an expensive paid corporate certificate, Windows Defender / SmartScreen might show a blue prompt on the first launch. Simply click **"More info"** &rarr; **"Run anyway"**.
 
 ---
 
@@ -65,7 +85,7 @@ It combines intelligent loot crafting, bulk disenchanting, real-time champion se
 
 ---
 
-## 🚀 Getting Started
+## 💻 Running from Source (For Developers)
 
 ### Prerequisites
 - Windows 10 / 11

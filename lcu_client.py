@@ -3,14 +3,21 @@ import json
 import logging
 import os
 import requests
-import urllib3
+import sys
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LOCKFILE_PATH = r"C:\Riot Games\League of Legends\lockfile"
-LOADOUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loadout.json")
+
+def get_data_dir():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+LOADOUT_FILE = os.path.join(get_data_dir(), "loadout.json")
 
 logger = logging.getLogger("lcu_client")
+
 
 def get_lcu_session():
     """

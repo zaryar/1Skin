@@ -20,3 +20,10 @@ Thumbs.db
 scratch/
 antigravity_context.md
 
+# PyInstaller builds
+build/
+dist/
+*.spec
+*.zip
+
+

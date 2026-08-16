@@ -1,14 +1,29 @@
 import logging
 import os
+import sys
 import threading
 import time
+import webbrowser
 from flask import Flask, jsonify, render_template, request, Response
 import lcu_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("hexskin_app")
 
-app = Flask(__name__)
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller bundle."""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+
+app = Flask(
+    __name__,
+    template_folder=get_resource_path("templates"),
+    static_folder=get_resource_path("static")
+)
+
 
 # State
 app_state = {
@@ -177,39 +192,51 @@ def api_sync_start():
         sync_state["running"] = True
         sync_state["status"] = "syncing"
         sync_state["current"] = 0
-        sync_state["message"] = "Starte Synchronisation..."
+        sync_state["message"] = "Starting synchronization..."
 
         def cb(current, total, champ_name, step_status):
             sync_state["current"] = current
             sync_state["total"] = total
             sync_state["currentChamp"] = champ_name
-            sync_state["message"] = f"Synchronisiere {champ_name} ({current}/{total})..."
+            sync_state["message"] = f"Syncing {champ_name} ({current}/{total})..."
 
         try:
             success = sync_bravery_skins.sync_skins(progress_callback=cb)
             sync_state["status"] = "done" if success else "error"
-            sync_state["message"] = "Synchronisation erfolgreich abgeschlossen!" if success else "Synchronisation fehlgeschlagen."
+            sync_state["message"] = "Synchronization completed successfully!" if success else "Synchronization failed."
         except Exception as e:
             sync_state["status"] = "error"
-            sync_state["message"] = f"Fehler: {str(e)}"
+            sync_state["message"] = f"Error: {str(e)}"
         finally:
             sync_state["running"] = False
 
     t = threading.Thread(target=run_sync_thread, daemon=True)
     t.start()
-    return jsonify({"success": True, "message": "Sync gestartet."})
+    return jsonify({"success": True, "message": "Sync started."})
 
 @app.route('/api/sync/bravery/stop', methods=['POST'])
 def api_sync_stop():
     sync_state["running"] = False
     sync_state["status"] = "idle"
-    sync_state["message"] = "Synchronisation abgebrochen."
+    sync_state["message"] = "Synchronization stopped."
     return jsonify({"success": True})
+
+def open_browser(port):
+    time.sleep(1.2)
+    try:
+        webbrowser.open(f"http://127.0.0.1:{port}")
+    except Exception as e:
+        logger.debug(f"Could not open browser automatically: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"\n=======================================================")
     print(f" [HexSkin] Studio Server running on: http://127.0.0.1:{port}")
     print(f"=======================================================\n")
-    app.run(debug=True, host="127.0.0.1", port=port, use_reloader=False)
+    
+    # Auto-open browser in background for convenient 1-click start
+    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
+    
+    app.run(debug=False, host="127.0.0.1", port=port, use_reloader=False)
+
 
