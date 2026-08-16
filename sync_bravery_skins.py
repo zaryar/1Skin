@@ -130,10 +130,15 @@ def sync_skins(specific_champ_ids=None, progress_callback=None):
             print(f"[{idx}/{total}] Error: {e}")
             failed_count += 1
 
-    # Step 3: Exit Champ Select safely at the end
+    # Step 3: Exit Champ Select & Lobby safely at the end
     print("\n[INFO] All skins synced! Exiting Champ Select safely...")
     time.sleep(0.4)
     session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+    time.sleep(0.3)
+    try:
+        session.delete(f"{base_url}/lol-lobby/v2/lobby")
+    except Exception:
+        pass
 
     print(f"\n=======================================================")
     print(f" [HexSkin] 1-Session Synchronization Completed!")
@@ -141,6 +146,7 @@ def sync_skins(specific_champ_ids=None, progress_callback=None):
     print(f"=======================================================\n")
     print("Arena Bravery will now automatically load all your preferred skins!")
     return True
+
 
 if __name__ == '__main__':
     sync_skins()
