@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HexSkin Studio | LoL Skin Crafter & Auto-Equipper</title>
+    <!-- Fonts: Cinzel for Hextech headers & Inter for high readability UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Top Hextech Navigation Bar -->
+        <header class="hex-header">
+            <div class="header-left">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="6 2 18 2 22 8 12 22 2 8 6 2"></polygon>
+                            <polyline points="2 8 12 13 22 8"></polyline>
+                            <polyline points="12 22 12 13"></polyline>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>HEXSKIN</h1>
+                        <span class="brand-sub">LOOT & LOADOUT STUDIO</span>
+                    </div>
+                </div>
+
+                <div class="status-indicator-wrapper">
+                    <div id="lcu-status-pill" class="status-pill offline">
+                        <span class="status-dot"></span>
+                        <span id="lcu-status-text" class="status-label">Connecting LCU...</span>
+                    </div>
+                    <div id="champ-select-pill" class="status-pill in-cs hidden">
+                        <span class="status-dot pulse"></span>
+                        <span class="status-label">🎲 Champ Select Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Currencies & Profile -->
+            <div class="header-right">
+                <div class="currencies-bar">
+                    <!-- Orange Essence -->
+                    <div class="currency-item currency-oe" title="Orange Essence (Skin Upgrades & Crafting)">
+                        <div class="currency-icon-gem oe-gem"></div>
+                        <div class="currency-meta">
+                            <span class="currency-name">ORANGE ESSENCE</span>
+                            <span id="header-oe-val" class="currency-val">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Blue Essence -->
+                    <div class="currency-item currency-be" title="Blue Essence">
+                        <div class="currency-icon-gem be-gem"></div>
+                        <div class="currency-meta">
+                            <span class="currency-name">BLUE ESSENCE</span>
+                            <span id="header-be-val" class="currency-val">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Mythic Essence -->
+                    <div class="currency-item currency-me" title="Mythic Essence">
+                        <div class="currency-icon-gem me-gem"></div>
+                        <div class="currency-meta">
+                            <span class="currency-name">MYTHIC</span>
+                            <span id="header-me-val" class="currency-val">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Riot Points -->
+                    <div class="currency-item currency-rp" title="Riot Points">
+                        <div class="currency-icon-gem rp-gem">RP</div>
+                        <div class="currency-meta">
+                            <span class="currency-name">RIOT POINTS</span>
+                            <span id="header-rp-val" class="currency-val">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <!-- Sound Toggle -->
+                    <button id="btn-sound-toggle" class="btn-icon" title="Toggle Auto-Equip Sound Alert">
+                        <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                        <svg id="icon-sound-off" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
+                        </svg>
+                    </button>
+
+                    <!-- Refresh Data -->
+                    <button id="btn-refresh" class="btn-icon" title="Sync data with League Client">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Summoner Profile -->
+                <div class="summoner-profile">
+                    <div class="avatar-wrapper">
+                        <img id="header-avatar" src="" alt="Avatar" class="avatar-img">
+                        <span id="header-level" class="level-badge">1</span>
+                    </div>
+                    <div class="summoner-info">
+                        <span id="header-summoner-name" class="summoner-name">Summoner</span>
+                        <span id="header-summoner-tag" class="summoner-tag">#EUW</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="hex-nav-tabs">
+            <button class="nav-tab active" data-tab="crafter">
+                <span class="tab-icon">🛠️</span>
+                <span class="tab-title">Skin Crafter</span>
+                <span class="tab-desc">Missing Skins</span>
+                <span id="badge-crafter-count" class="tab-badge">0</span>
+            </button>
+
+            <button class="nav-tab" data-tab="disenchanter">
+                <span class="tab-icon">💎</span>
+                <span class="tab-title">Disenchanter</span>
+                <span class="tab-desc">Extra Shards</span>
+                <span id="badge-disenchant-count" class="tab-badge">0</span>
+            </button>
+
+            <button class="nav-tab" data-tab="loadouts">
+                <span class="tab-icon">🎨</span>
+                <span class="tab-title">Auto-Equipper</span>
+                <span class="tab-desc">Skin Loadouts</span>
+                <span id="badge-loadouts-count" class="tab-badge">0</span>
+            </button>
+        </nav>
+
+        <!-- Main Workspace View -->
+        <main class="hex-main">
+
+            <!-- TAB 1: SKIN CRAFTER (Missing Skins) -->
+            <section id="tab-crafter" class="tab-content active">
+                <div class="section-toolbar">
+                    <div class="toolbar-info">
+                        <h2>Skin Crafter <span class="badge-accent">Missing Skins</span></h2>
+                        <p>Owned champions with <strong>no owned skin</strong> that have matching loot shards ready to unlock.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <div class="search-box">
+                            <input type="text" id="crafter-search" placeholder="Search champion or skin..." autocomplete="off">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="crafter-summary-banner" class="summary-banner">
+                    <div class="banner-stat">
+                        <span class="stat-label">Available Unlocks</span>
+                        <span id="crafter-total-skins" class="stat-val">0 Skins</span>
+                    </div>
+                    <div class="banner-divider"></div>
+                    <div class="banner-stat">
+                        <span class="stat-label">Your Orange Essence</span>
+                        <span id="crafter-avail-oe" class="stat-val text-gold">0 OE</span>
+                    </div>
+                </div>
+
+                <div id="crafter-cards-container" class="cards-grid">
+                    <!-- Dynamic Champion Shard Cards -->
+                </div>
+
+                <div id="crafter-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">✨</div>
+                    <h3>All Set!</h3>
+                    <p>You already own skins for all your champions, or have no matching skin shards in your loot.</p>
+                </div>
+            </section>
+
+            <!-- TAB 2: DISENCHANTER (Extra Shards) -->
+            <section id="tab-disenchanter" class="tab-content">
+                <div class="section-toolbar">
+                    <div class="toolbar-info">
+                        <h2>Loot Disenchanter <span class="badge-danger">Extra Shards</span></h2>
+                        <p>Shards for champions where you <strong>already own at least one skin</strong>. Disenchant them for Orange Essence.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <div class="search-box">
+                            <input type="text" id="disenchant-search" placeholder="Search champion or skin..." autocomplete="off">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="disenchant-summary-banner" class="summary-banner">
+                    <div class="banner-stat">
+                        <span class="stat-label">Shards to Disenchant</span>
+                        <span id="disenchant-total-count" class="stat-val">0 Shards</span>
+                    </div>
+                    <div class="banner-divider"></div>
+                    <div class="banner-stat">
+                        <span class="stat-label">Potential OE Gain</span>
+                        <span id="disenchant-total-oe-gain" class="stat-val text-cyan">+0 OE</span>
+                    </div>
+                </div>
+
+                <div id="disenchant-cards-container" class="disenchant-grid">
+                    <!-- Dynamic Disenchant Cards -->
+                </div>
+
+                <div id="disenchant-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">💎</div>
+                    <h3>No Extra Shards</h3>
+                    <p>There are currently no loot shards for champions you already own skins for.</p>
+                </div>
+            </section>
+
+            <!-- TAB 3: AUTO-EQUIPPER LOADOUTS -->
+            <section id="tab-loadouts" class="tab-content">
+                <div class="section-toolbar">
+                    <div class="toolbar-info">
+                        <h2>Auto-Equipper Loadouts <span class="badge-gold">Arena / SoloQ / ARAM</span></h2>
+                        <p>Choose your preferred skin per champion. The tool automatically equips it during <strong>Champion Select</strong>.</p>
+                    </div>
+                    <div class="toolbar-controls">
+                        <div class="filter-pills">
+                            <button class="filter-pill active" data-filter="all">All (<span id="loadouts-count-all">0</span>)</button>
+                            <button class="filter-pill" data-filter="configured">Equipped (<span id="loadouts-count-configured">0</span>)</button>
+                            <button class="filter-pill" data-filter="unconfigured">Unset (<span id="loadouts-count-unconfigured">0</span>)</button>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="loadouts-search" placeholder="Filter champions..." autocomplete="off">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <button id="btn-open-bravery-modal" class="btn-bravery-sync" title="Sync all preferred skins for Arena Bravery via Custom Lobby">
+                            <span>⚡</span> Bravery Sync
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loadouts-container" class="loadouts-list">
+                    <!-- Dynamic Champion Loadout Rows -->
+                </div>
+
+                <div id="loadouts-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">🔍</div>
+                    <h3>No Champions Found</h3>
+                    <p>No champions match your search or filter criteria.</p>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Floating Toast Container for Feedback -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Arena Bravery Sync Modal -->
+        <div id="bravery-sync-modal" class="modal-overlay hidden">
+            <div class="hex-modal bravery-modal">
+                <div class="modal-gem">⚡</div>
+                <h2>Arena Bravery Skin Sync</h2>
+                <p>
+                    In <strong>Arena Bravery</strong>, Riot automatically selects your <em>last used skin</em> from their servers. 
+                    This tool synchronizes all your configured skins one by one in a Custom Game lobby.
+                </p>
+
+                <div class="modal-instructions">
+                    <div class="step-row"><span class="step-num">1</span> <span>Create a <strong>Custom Game</strong> (Blind Pick) in the League Client.</span></div>
+                    <div class="step-row"><span class="step-num">2</span> <span>Stay in the lobby and click <strong>Start Sync</strong> below.</span></div>
+                </div>
+
+                <div id="sync-progress-area" class="sync-progress-area hidden">
+                    <div class="sync-status-msg" id="sync-status-msg">Ready...</div>
+                    <div class="progress-bar-track">
+                        <div id="sync-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="sync-progress-counts">
+                        <span id="sync-progress-text">0 / 0 Champions</span>
+                        <span id="sync-progress-percent">0%</span>
+                    </div>
+                </div>
+
+                <div class="modal-btn-row">
+                    <button id="btn-start-bravery-sync" class="btn-primary">Start Sync</button>
+                    <button id="btn-stop-bravery-sync" class="btn-danger hidden">Cancel</button>
+                    <button id="btn-close-bravery-modal" class="btn-ghost">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offline / Disconnected Modal Overlay -->
+        <div id="offline-modal" class="modal-overlay hidden">
+            <div class="hex-modal">
+                <div class="modal-gem">⚠️</div>
+                <h2>League Client Not Reachable</h2>
+                <p>The League of Legends client is currently not running or the lockfile has not been generated.</p>
+                <div class="modal-tip">
+                    <span>💡 Tip:</span> Start the League Client and log in. The web app will connect automatically.
+                </div>
+                <button id="btn-modal-retry" class="btn-primary">Retry Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
