@@ -9,11 +9,30 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import lcu_client
 
-def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=None):
+def get_gameflow_phase(session, base_url):
+    try:
+        r = session.get(f"{base_url}/lol-gameflow/v1/gameflow-phase", timeout=2)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+def wait_for_phase(session, base_url, target_phases, max_wait=6.0):
+    start = time.time()
+    while time.time() - start < max_wait:
+        phase = get_gameflow_phase(session, base_url)
+        if phase in target_phases:
+            return phase
+        time.sleep(0.2)
+    return None
+
+def sync_skins(specific_champ_ids=None, delay_between=0.4, progress_callback=None):
     """
     Automates the 'Last Used Skin' sync for Arena Bravery by cycling through
-    champions in a Custom Game Lobby, locking them, selecting the favorite skin,
-    and immediately aborting champ select.
+    champions in a Custom Game Lobby, picking them without locking in (to avoid
+    ever triggering the game countdown), selecting the target skin, and immediately
+    canceling champ select to return to the custom lobby.
     """
     session, base_url = lcu_client.get_lcu_session()
     if not session:
@@ -34,16 +53,19 @@ def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=Non
 
     total = len(targets)
     print(f"\n=======================================================")
-    print(f" [HexSkin] Arena Bravery Skin Sync Started ({total} Champions)")
+    print(f" [HexSkin] Safe Arena Bravery Skin Sync ({total} Champions)")
     print(f"=======================================================\n")
-    print("[NOTICE] Please create a Custom Game lobby (Blind Pick) in the League Client")
-    print("         and stay in the lobby. The script will handle the rest!\n")
 
-    # 1. Verify custom lobby exists
+    # 1. Verify custom lobby exists & we are in Lobby phase
+    phase = get_gameflow_phase(session, base_url)
+    if phase in ["InProgress", "GameStart", "WaitingForStats"]:
+        print(f"[ERROR] Cannot start sync: League is currently in game ({phase}).")
+        return False
+
     lobby_res = session.get(f"{base_url}/lol-lobby/v2/lobby")
     if lobby_res.status_code != 200:
         print("[ERROR] No active Custom Game lobby found in client.")
-        print("[INFO] Please create a Custom Game (Blind Pick) and restart the sync.")
+        print("[INFO] Please create a Custom Game (Blind Pick) in the League Client and try again.")
         return False
 
     success_count = 0
@@ -51,7 +73,17 @@ def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=Non
 
     for idx, (champ_id, target_skin_id) in enumerate(targets, 1):
         try:
-            # Fetch champion name
+            # A. Ensure we are in Lobby phase before starting
+            current_phase = get_gameflow_phase(session, base_url)
+            if current_phase == "ChampSelect":
+                # If still in ChampSelect from previous step, cancel it
+                session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+                wait_for_phase(session, base_url, ["Lobby", "None"], max_wait=3.0)
+            elif current_phase in ["InProgress", "GameStart"]:
+                print(f"\n[ABORT] Game is loading or in progress ({current_phase}). Stopping sync.")
+                return False
+
+            # B. Fetch champion name
             champ_res = session.get(f"{base_url}/lol-game-data/assets/v1/champions/{champ_id}.json", timeout=2)
             champ_name = champ_res.json().get("name", f"Champion {champ_id}") if champ_res.status_code == 200 else f"Champion {champ_id}"
 
@@ -59,20 +91,24 @@ def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=Non
             if progress_callback:
                 progress_callback(idx, total, champ_name, "syncing")
 
-            # A. Start Champ Select
+            # C. Start Champ Select
             start_res = session.post(f"{base_url}/lol-lobby/v1/lobby/custom/start-champ-select")
             if start_res.status_code not in (200, 204):
-                print(f" -> Error starting Champ Select ({start_res.status_code})")
-                failed_count += 1
-                continue
+                # Retry once if client was momentarily busy
+                time.sleep(0.3)
+                start_res = session.post(f"{base_url}/lol-lobby/v1/lobby/custom/start-champ-select")
+                if start_res.status_code not in (200, 204):
+                    print(f" -> Error starting Champ Select ({start_res.status_code})")
+                    failed_count += 1
+                    continue
 
-            # B. Wait for Champ Select session
+            # D. Wait for Champ Select session
             session_ready = False
             local_cell_id = None
             pick_action_id = None
 
-            for _ in range(12):
-                time.sleep(0.25)
+            for _ in range(15):
+                time.sleep(0.2)
                 cs_res = session.get(f"{base_url}/lol-champ-select/v1/session")
                 if cs_res.status_code == 200:
                     cs_data = cs_res.json()
@@ -88,28 +124,36 @@ def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=Non
                         break
 
             if not session_ready or pick_action_id is None:
-                print(" -> Timeout waiting for Champ Select")
+                print(" -> Timeout waiting for Champ Select session")
                 session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+                wait_for_phase(session, base_url, ["Lobby", "None"], max_wait=2.0)
                 failed_count += 1
                 continue
 
-            # C. Pick Champion
+            # E. Select Champion (DO NOT call complete/lock-in to prevent game start countdown!)
             session.patch(
                 f"{base_url}/lol-champ-select/v1/session/actions/{pick_action_id}",
                 json={"championId": int(champ_id)}
             )
-            session.post(f"{base_url}/lol-champ-select/v1/session/actions/{pick_action_id}/complete")
-            time.sleep(0.2)
+            time.sleep(0.15)
 
-            # D. Select Target Skin
+            # F. Select Target Skin
             session.patch(
                 f"{base_url}/lol-champ-select/v1/session/my-selection",
                 json={"selectedSkinId": target_skin_id}
             )
-            time.sleep(0.2)
+            time.sleep(0.15)
 
-            # E. Cancel Champ Select (Drops back into Custom Lobby)
+            # G. Cancel Champ Select immediately (Returns back to Custom Lobby safely)
             session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+            
+            # H. Wait for client to return to Lobby state
+            returned_phase = wait_for_phase(session, base_url, ["Lobby", "None"], max_wait=3.0)
+            if not returned_phase:
+                # Extra safety: try cancel again
+                session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+                wait_for_phase(session, base_url, ["Lobby", "None"], max_wait=2.0)
+
             print(" -> OK!")
             success_count += 1
 
@@ -123,9 +167,10 @@ def sync_skins(specific_champ_ids=None, delay_between=0.6, progress_callback=Non
             failed_count += 1
             try:
                 session.post(f"{base_url}/lol-lobby/v1/lobby/custom/cancel-champ-select")
+                wait_for_phase(session, base_url, ["Lobby", "None"], max_wait=2.0)
             except Exception:
                 pass
-            time.sleep(1)
+            time.sleep(0.5)
 
     print(f"\n=======================================================")
     print(f" [HexSkin] Synchronization Completed!")
