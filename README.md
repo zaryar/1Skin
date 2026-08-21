@@ -36,40 +36,57 @@ No Python, coding knowledge, or command line required!
 
 ## 🌟 Overview
 
-**HexSkin Studio** is a unified, Hextech-themed single-page web dashboard designed to manage and optimize your League of Legends skin collection, loot crafting, and champ-select skin automation.
+**HexSkin Studio & HexSocial Hub** is a unified, Hextech-themed single-page web suite designed for League of Legends players:
 
-It combines intelligent loot crafting, bulk disenchanting, real-time champion select auto-equipping, and an automated solution for **League Arena Bravery skin selection**.
+1. **HexSkin Studio**: Intelligently crafts missing champion skins with Orange Essence, bulk disenchants extra shards, and provides real-time champion select auto-equipping alongside an automated synchronizer for **Arena Bravery**.
+2. **HexSocial (Friend Manager)**: A dedicated, full-featured Social Hub providing advanced folder/group management, batch organization of friends, rich real-time presence indicators, friend requests management (in/out), blocked players manager, and live profile hovercard inspections.
 
 ---
 
-## 📸 Screenshots
+## 📸 Modules & Features
 
 ### 🛠️ 1. Skin Crafter (Missing Skins)
 > Finds all owned champions where you **own 0 skins** and allows you to unlock them with Orange Essence in 1 click.
-![Skin Crafter](docs/screenshots/crafter.png)
 
 ---
 
 ### 💎 2. Smart Disenchanter (Extra Shards)
 > Identifies loot shards for champions where you **already own at least one skin**, letting you safely disenchant duplicates for maximum Orange Essence gain.
-![Loot Disenchanter](docs/screenshots/disenchanter.png)
 
 ---
 
 ### 🎨 3. Auto-Equipper Loadouts
 > Select your favorite skin for any champion. A lightweight background listener automatically equips your chosen skin during Champion Select across SoloQ, ARAM, Normal, and Arena.
-![Auto-Equipper](docs/screenshots/loadouts.png)
 
 ---
 
-### ⚡ 4. Arena Bravery Skin Sync
+### 👥 4. HexSocial: Friend Manager
+> A dedicated social manager providing:
+> - **Folder & Group Management**: Create, rename, delete custom folders and categorize friends.
+> - **Batch Operations**: Multi-select friends and move them between folders in 1 click.
+> - **Real-Time Live Presence**: Track friends in-game with match timer, champion played, game mode (Ranked, Arena, ARAM, TFT), and party status.
+> - **Profile Inspector & Hovercard**: View ranked tier, win/loss stats, mastery, and edit private notes/nicknames.
+> - **Friend Requests & Blocked Manager**: Accept/decline incoming requests, cancel outgoing requests, and manage blocked users.
+> - **Personal Status Controller**: Change your online status (Online, Away, DND, Invisible/Offline) and custom status message.
+
+---
+
+### ⚡ 5. Arena Bravery Skin Sync
 > In **Arena Bravery**, Riot server-side locks champions instantly, defaulting to your *last used skin*. This automated tool creates a quick custom lobby loop that locks in and selects all your configured favorite skins on Riot's backend account database in under 2 minutes.
-![Arena Bravery Sync](docs/screenshots/bravery_sync.png)
+
+---
+
+### 🚽 6. Smart Break Delay (Restroom Break & Reconnect Controller)
+> Safely pauses loading into the match after Champ Select so you can take a quick bathroom break without fear of remakes:
+> - **100% Vanguard Safe**: Uses the official League client reconnect API (`POST /lol-gameflow/v1/reconnect`) without memory hooks or DLL injections.
+> - **Configurable Safety Timer**: Set a safe delay (e.g. 75 seconds, well before the 1:05 minion spawn and 1:30 remake threshold).
+> - **1-Click Instant Reconnect**: Big **`[ 🚀 RECONNECT NOW ]`** button with live countdown digits and progress bar. Auto-reconnects safely if you run out of time.
 
 ---
 
 ## ✨ Features
 
+- **Smart Break Delay (Bio Break)**: Pauses the loading screen launch after Champ Select with a safe countdown timer and 1-click Reconnect.
 - **Dynamic Recipe Checking**: Queries `GET /lol-loot/v1/recipes/initial-item/{loot_id}` to dynamically verify recipe slot requirements (e.g. 2-slot `[loot_id, "CURRENCY_cosmetic"]` for upgrades and 1-slot `[loot_id]` for disenchanting).
 - **Real-Time Auto-Equipper**: Seamless background thread polling `GET /lol-champ-select/v1/session` to auto-equip your saved skin preference when locking in a champion.
 - **Arena Bravery 1-Click Sync**: Fully automated Custom Game loop (`POST /lol-lobby/v1/lobby/custom/start-champ-select` & `cancel-champ-select`) to persist preferred skins across Riot's servers for Bravery picks.

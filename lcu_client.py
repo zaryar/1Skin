@@ -546,3 +546,727 @@ def auto_equip_monitor_step(last_champ_state, sound_enabled=True):
         return last_champ_state
     except Exception:
         return None
+
+# =========================================================================
+# Social & Friend Manager LCU Services
+# =========================================================================
+
+QUEUE_TYPE_NAMES = {
+    "RANKED_SOLO_5x5": "Ranked Solo/Duo",
+    "RANKED_FLEX_SR": "Ranked Flex",
+    "RANKED_TFT": "Ranked TFT",
+    "NORMAL": "Normal (Blind/Draft)",
+    "NORMAL_5X5_BLIND": "Blind Pick",
+    "NORMAL_5X5_DRAFT": "Draft Pick",
+    "ARAM": "ARAM",
+    "CHERRY": "Arena",
+    "KIWI": "TFT",
+    "BOT": "Co-op vs AI",
+    "PRACTICETOOL": "Practice Tool",
+    "CUSTOM": "Custom Game",
+    "URF": "URF",
+    "ARURF": "ARURF",
+    "ONEFORALL": "One for All",
+    "NEXUSBLITZ": "Nexus Blitz",
+    "SWIFTPLAY": "Swiftplay"
+}
+
+def format_presence_details(friend):
+    """
+    Parses complex LCU friend 'lol' presence dictionary into a clean, human-readable summary.
+    """
+    availability = friend.get("availability", "offline")
+    status_msg = friend.get("statusMessage", "")
+    lol = friend.get("lol", {}) or {}
+    product_name = friend.get("productName", "")
+
+    if availability in ("offline", "mobile"):
+        return {
+            "statusType": "offline" if availability == "offline" else "mobile",
+            "statusLabel": "Offline" if availability == "offline" else "Mobile App",
+            "detail": status_msg or ("Mobile" if availability == "mobile" else "Offline"),
+            "gameStatus": "offline",
+            "gameMode": "",
+            "championName": "",
+            "championId": "",
+            "gameTimeMinutes": None,
+            "tier": "",
+            "division": "",
+            "rankText": "Unranked",
+            "party": None
+        }
+
+    game_status = lol.get("gameStatus", "")
+    game_mode = lol.get("gameMode", "") or lol.get("gameQueueType", "")
+    champ_id = lol.get("championId", "")
+    champ_name = lol.get("skinname", "") or ""
+    time_stamp_str = lol.get("timeStamp", "")
+
+    # Clean queue/mode name
+    mode_name = QUEUE_TYPE_NAMES.get(game_mode, game_mode.replace("_", " ").title())
+
+    # Calculate match timer
+    game_time_min = None
+    if time_stamp_str and game_status in ("inGame", "inGame_TFT", "inGame_KIWI"):
+        try:
+            import time
+            start_ts = int(time_stamp_str) / 1000.0
+            diff = max(0, int((time.time() - start_ts) // 60))
+            game_time_min = diff
+        except Exception:
+            pass
+
+    # Rank formatting
+    tier = lol.get("rankedLeagueTier", "")
+    division = lol.get("rankedLeagueDivision", "")
+    rank_text = f"{tier.title()} {division}".strip() if tier else "Unranked"
+
+    # Status Label & Description
+    status_label = "Online"
+    detail = status_msg or "In League Client"
+
+    if game_status == "inGame":
+        status_label = "In Game"
+        time_part = f" ({game_time_min}m)" if game_time_min is not None else ""
+        champ_part = f" as {champ_name}" if champ_name else ""
+        detail = f"Playing {mode_name or 'Game'}{champ_part}{time_part}"
+    elif game_status in ("championSelect", "champion_select"):
+        status_label = "In Champ Select"
+        detail = f"Selecting Champion ({mode_name})"
+    elif game_status == "inQueue":
+        status_label = "In Queue"
+        detail = f"Searching Match ({mode_name})"
+    elif game_status.startswith("hosting_"):
+        status_label = "In Lobby"
+        detail = f"In Lobby ({mode_name})"
+    elif availability == "away":
+        status_label = "Away"
+        detail = status_msg or "Away from keyboard"
+    elif availability == "dnd":
+        status_label = "Do Not Disturb"
+        detail = status_msg or "Busy"
+
+    # Party details if available
+    party = None
+    if lol.get("pty"):
+        try:
+            pty_data = json.loads(lol["pty"]) if isinstance(lol["pty"], str) else lol["pty"]
+            party = {
+                "isOpen": pty_data.get("isPartyOpen", False),
+                "max": pty_data.get("maxPlayers", 5),
+                "count": len(pty_data.get("summoners", [])) or len(pty_data.get("summonerPuuids", []))
+            }
+        except Exception:
+            pass
+
+    return {
+        "statusType": availability,
+        "statusLabel": status_label,
+        "detail": detail,
+        "gameStatus": game_status,
+        "gameMode": mode_name,
+        "championName": champ_name,
+        "championId": champ_id,
+        "gameTimeMinutes": game_time_min,
+        "tier": tier,
+        "division": division,
+        "rankText": rank_text,
+        "party": party
+    }
+
+
+_social_cache = {
+    "last_req_ts": 0,
+    "incoming": [],
+    "outgoing": [],
+    "last_blocked_ts": 0,
+    "blocked": []
+}
+
+def get_social_overview():
+    """
+    Aggregates all friends, groups, pending requests, blocked players,
+    and user's own status for the Friend Manager application.
+    """
+    import time
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        # 1. Fetch friend groups
+        groups_res = session.get(f"{base_url}/lol-chat/v1/friend-groups", timeout=3)
+        groups = groups_res.json() if groups_res.status_code == 200 else []
+        
+        # Ensure Default group exists in structure
+        has_default = any(g.get("id") == 0 for g in groups)
+        if not has_default:
+            groups.append({
+                "id": 0,
+                "name": "General",
+                "priority": 0,
+                "collapsed": False,
+                "isDefault": True
+            })
+
+        # Format group dictionary mapping
+        group_map = {}
+        for g in groups:
+            gid = g.get("id")
+            gname = g.get("name", "General")
+            if gname == "**Default":
+                gname = "General"
+            group_map[gid] = {
+                "id": gid,
+                "name": gname,
+                "priority": g.get("priority", 0),
+                "collapsed": g.get("collapsed", False),
+                "isDefault": (gid == 0 or g.get("name") == "**Default"),
+                "friends": []
+            }
+
+        # 2. Fetch friends list
+        friends_res = session.get(f"{base_url}/lol-chat/v1/friends", timeout=4)
+        friends_raw = friends_res.json() if friends_res.status_code == 200 else []
+
+        formatted_friends = []
+        counts = {
+            "total": len(friends_raw),
+            "online": 0,
+            "inGame": 0,
+            "away": 0,
+            "offline": 0,
+            "mobile": 0
+        }
+
+        default_icon_url = "/lcu-img/lol-game-data/assets/v1/profile-icons/29.jpg"
+
+        for f in friends_raw:
+            fid = f.get("id")
+            game_name = f.get("gameName") or f.get("name") or "Friend"
+            game_tag = f.get("gameTag") or ""
+            riot_id = f"{game_name}#{game_tag}" if game_tag else game_name
+            icon_id = f.get("icon", 29)
+            group_id = f.get("groupId", 0)
+            note = f.get("note") or ""
+            puuid = f.get("puuid") or ""
+            summoner_id = f.get("summonerId", 0)
+
+            presence = format_presence_details(f)
+            status_type = presence["statusType"]
+
+            # Statistics count
+            if status_type == "offline":
+                counts["offline"] += 1
+            elif status_type == "mobile":
+                counts["mobile"] += 1
+            else:
+                counts["online"] += 1
+                if status_type == "away":
+                    counts["away"] += 1
+                if presence.get("gameStatus") in ("inGame", "inGame_TFT", "inGame_KIWI", "championSelect"):
+                    counts["inGame"] += 1
+
+            # Ensure group exists in group_map
+            if group_id not in group_map:
+                group_map[group_id] = {
+                    "id": group_id,
+                    "name": f.get("groupName") or "General",
+                    "priority": 99,
+                    "collapsed": False,
+                    "isDefault": (group_id == 0),
+                    "friends": []
+                }
+
+            friend_obj = {
+                "id": fid,
+                "puuid": puuid,
+                "summonerId": summoner_id,
+                "gameName": game_name,
+                "gameTag": game_tag,
+                "riotId": riot_id,
+                "iconId": icon_id,
+                "iconUrl": f"/lcu-img/lol-game-data/assets/v1/profile-icons/{icon_id}.jpg" if icon_id and icon_id > 0 else default_icon_url,
+                "groupId": group_id,
+                "groupName": group_map[group_id]["name"],
+                "note": note,
+                "presence": presence
+            }
+
+            formatted_friends.append(friend_obj)
+            group_map[group_id]["friends"].append(friend_obj)
+
+        # 3. Fetch friend requests (cached for 20s to reduce LCU API overhead)
+        now = time.time()
+        if now - _social_cache["last_req_ts"] > 20 or not _social_cache["incoming"]:
+            req_res = session.get(f"{base_url}/lol-chat/v2/friend-requests", timeout=3)
+            raw_requests = req_res.json() if req_res.status_code == 200 else []
+            incoming_requests = []
+            outgoing_requests = []
+
+            for r in raw_requests:
+                r_obj = {
+                    "puuid": r.get("puuid"),
+                    "gameName": r.get("gameName") or r.get("name") or "Summoner",
+                    "tagLine": r.get("tagLine") or "",
+                    "riotId": f"{r.get('gameName', '')}#{r.get('tagLine', '')}".strip('#'),
+                    "iconId": r.get("icon", 29),
+                    "iconUrl": f"/lcu-img/lol-game-data/assets/v1/profile-icons/{r.get('icon', 29)}.jpg" if r.get('icon', -1) > 0 else default_icon_url,
+                    "direction": r.get("direction", "in")
+                }
+                if r.get("direction") == "in":
+                    incoming_requests.append(r_obj)
+                else:
+                    outgoing_requests.append(r_obj)
+            _social_cache["incoming"] = incoming_requests
+            _social_cache["outgoing"] = outgoing_requests
+            _social_cache["last_req_ts"] = now
+        else:
+            incoming_requests = _social_cache["incoming"]
+            outgoing_requests = _social_cache["outgoing"]
+
+        # 4. Fetch blocked players (cached for 20s)
+        if now - _social_cache["last_blocked_ts"] > 20 or not _social_cache["blocked"]:
+            blocked_res = session.get(f"{base_url}/lol-chat/v1/blocked-players", timeout=3)
+            raw_blocked = blocked_res.json() if blocked_res.status_code == 200 else []
+            blocked_players = []
+            for b in raw_blocked:
+                b_name = b.get("gameName") or b.get("name") or "Blocked Player"
+                b_tag = b.get("gameTag") or ""
+                blocked_players.append({
+                    "id": b.get("id"),
+                    "puuid": b.get("puuid"),
+                    "summonerId": b.get("summonerId"),
+                    "gameName": b_name,
+                    "gameTag": b_tag,
+                    "riotId": f"{b_name}#{b_tag}" if b_tag else b_name,
+                    "iconId": b.get("icon", 29),
+                    "iconUrl": f"/lcu-img/lol-game-data/assets/v1/profile-icons/{b.get('icon', 29)}.jpg" if b.get("icon", -1) > 0 else default_icon_url
+                })
+            _social_cache["blocked"] = blocked_players
+            _social_cache["last_blocked_ts"] = now
+        else:
+            blocked_players = _social_cache["blocked"]
+
+        # 5. Fetch user's own status
+        me_res = session.get(f"{base_url}/lol-chat/v1/me", timeout=3)
+        me_data = me_res.json() if me_res.status_code == 200 else {}
+        my_status = {
+            "availability": me_data.get("availability", "online"),
+            "statusMessage": me_data.get("statusMessage", ""),
+            "gameName": me_data.get("gameName", ""),
+            "gameTag": me_data.get("gameTag", ""),
+            "iconId": me_data.get("icon", 29),
+            "iconUrl": f"/lcu-img/lol-game-data/assets/v1/profile-icons/{me_data.get('icon', 29)}.jpg" if me_data.get("icon") else ""
+        }
+
+        # Convert groups to sorted list
+        groups_list = list(group_map.values())
+        groups_list.sort(key=lambda g: (0 if g["isDefault"] else 1, g.get("priority", 0), g["name"].lower()))
+
+        return {
+            "success": True,
+            "counts": counts,
+            "friends": formatted_friends,
+            "groups": groups_list,
+            "requests": {
+                "incoming": incoming_requests,
+                "outgoing": outgoing_requests,
+                "total": len(incoming_requests) + len(outgoing_requests)
+            },
+            "blocked": blocked_players,
+            "me": my_status
+        }
+    except Exception as e:
+        logger.error(f"Error in get_social_overview: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def create_friend_group(name):
+    """Creates a new friend group/folder in LCU."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    if not name or not name.strip():
+        return {"success": False, "error": "Group name cannot be empty"}
+
+    try:
+        res = session.post(f"{base_url}/lol-chat/v1/friend-groups", json={"name": name.strip()})
+        if res.status_code in (200, 201, 204):
+            return {"success": True, "data": res.json() if res.content else {}}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error creating friend group: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def update_friend_group(group_id, name=None, collapsed=None):
+    """Renames or toggles collapsed state of a friend group."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        payload = {}
+        if name is not None:
+            payload["name"] = name.strip()
+        if collapsed is not None:
+            payload["collapsed"] = bool(collapsed)
+
+        res = session.put(f"{base_url}/lol-chat/v1/friend-groups/{group_id}", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error updating friend group {group_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def delete_friend_group(group_id):
+    """Deletes a custom friend group."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    if int(group_id) == 0:
+        return {"success": False, "error": "Cannot delete the default group"}
+
+    try:
+        res = session.delete(f"{base_url}/lol-chat/v1/friend-groups/{group_id}")
+        if res.status_code in (200, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error deleting friend group {group_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def update_friend(friend_id, group_id=None, note=None):
+    """Updates a friend's assigned folder (groupId) or custom note/nickname."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        payload = {}
+        if group_id is not None:
+            payload["groupId"] = int(group_id)
+        if note is not None:
+            payload["note"] = str(note)
+
+        res = session.put(f"{base_url}/lol-chat/v1/friends/{friend_id}", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error updating friend {friend_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def batch_move_friends(friend_ids, group_id):
+    """Moves multiple friends to a specific folder simultaneously."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    target_group_id = int(group_id)
+    success_count = 0
+    errors = []
+
+    for fid in friend_ids:
+        try:
+            res = session.put(f"{base_url}/lol-chat/v1/friends/{fid}", json={"groupId": target_group_id})
+            if res.status_code in (200, 201, 204):
+                success_count += 1
+            else:
+                errors.append(f"Failed for {fid}: {res.status_code}")
+        except Exception as e:
+            errors.append(f"Error for {fid}: {str(e)}")
+
+    return {
+        "success": (success_count > 0 or len(friend_ids) == 0),
+        "moved": success_count,
+        "total": len(friend_ids),
+        "errors": errors
+    }
+
+
+def remove_friend(friend_id):
+    """Unfriends / removes a friend from the friend list."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        res = session.delete(f"{base_url}/lol-chat/v1/friends/{friend_id}")
+        if res.status_code in (200, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error removing friend {friend_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def batch_remove_friends(friend_ids):
+    """Removes multiple friends from the friend list simultaneously."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    success_count = 0
+    errors = []
+
+    for fid in friend_ids:
+        try:
+            res = session.delete(f"{base_url}/lol-chat/v1/friends/{fid}")
+            if res.status_code in (200, 204):
+                success_count += 1
+            else:
+                errors.append(f"Failed for {fid}: {res.status_code}")
+        except Exception as e:
+            errors.append(f"Error for {fid}: {str(e)}")
+
+    return {
+        "success": (success_count > 0 or len(friend_ids) == 0),
+        "removed": success_count,
+        "total": len(friend_ids),
+        "errors": errors
+    }
+
+
+def send_friend_request(game_name, tag_line):
+    """Sends an outgoing friend request using Riot ID (Name + Tag)."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    if not game_name or not tag_line:
+        return {"success": False, "error": "Game Name and Tag Line are required (e.g. Player#EUW)"}
+
+    try:
+        payload = {
+            "gameName": game_name.strip(),
+            "tagLine": tag_line.strip().lstrip('#')
+        }
+        res = session.post(f"{base_url}/lol-chat/v2/friend-requests", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True, "message": f"Friend request sent to {payload['gameName']}#{payload['tagLine']}"}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error sending friend request: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def respond_friend_request(puuid, accept=True):
+    """Accepts (PUT) or declines/cancels (DELETE) a friend request by player puuid."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        if accept:
+            res = session.put(f"{base_url}/lol-chat/v2/friend-requests/{puuid}", json={})
+        else:
+            res = session.delete(f"{base_url}/lol-chat/v2/friend-requests/{puuid}")
+
+        if res.status_code in (200, 201, 204):
+            return {"success": True, "action": "accepted" if accept else "declined"}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error responding to friend request {puuid}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def get_blocked_players():
+    """Retrieves all currently blocked players."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        res = session.get(f"{base_url}/lol-chat/v1/blocked-players")
+        if res.status_code == 200:
+            return {"success": True, "blocked": res.json()}
+        return {"success": False, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error fetching blocked players: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def unblock_player(player_id):
+    """Unblocks a player by their ID."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        res = session.delete(f"{base_url}/lol-chat/v1/blocked-players/{player_id}")
+        if res.status_code in (200, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error unblocking player {player_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def block_player(name_or_puuid):
+    """Blocks a player by name or puuid."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        payload = {"name": name_or_puuid}
+        res = session.post(f"{base_url}/lol-chat/v1/blocked-players", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error blocking player {name_or_puuid}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def get_friend_hovercard(puuid):
+    """
+    Fetches full hovercard profile info (Rank, Mastery, Summoner Level, Challenge data)
+    for a specific friend.
+    """
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        res = session.get(f"{base_url}/lol-hovercard/v1/friend-info/{puuid}")
+        if res.status_code == 200:
+            return {"success": True, "hovercard": res.json()}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error fetching hovercard for {puuid}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def update_my_status(availability=None, status_message=None):
+    """Updates the user's personal chat availability and status message."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        payload = {}
+        if availability is not None:
+            payload["availability"] = availability
+        if status_message is not None:
+            payload["statusMessage"] = status_message
+
+        res = session.put(f"{base_url}/lol-chat/v1/me", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True, "availability": availability, "statusMessage": status_message}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error updating user presence: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def invite_to_lobby(summoner_id=None, puuid=None):
+    """Invites a friend to the currently active lobby."""
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        payload = []
+        if summoner_id and int(summoner_id) > 0:
+            payload.append({"toSummonerId": int(summoner_id)})
+        elif puuid:
+            payload.append({"toUserPuuid": str(puuid)})
+        else:
+            return {"success": False, "error": "Either summonerId or puuid is required"}
+
+        res = session.post(f"{base_url}/lol-lobby/v2/lobby/invitations", json=payload)
+        if res.status_code in (200, 201, 204):
+            return {"success": True, "message": "Invitation sent successfully"}
+        return {"success": False, "status_code": res.status_code, "error": "No active lobby or failed to invite"}
+    except Exception as e:
+        logger.error(f"Error sending lobby invite: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# =========================================================================
+# Gameflow & Smart Loading Delay Services
+# =========================================================================
+
+def get_gameflow_phase():
+    """
+    Returns the current gameflow phase:
+    'None', 'Lobby', 'Matchmaking', 'ReadyCheck', 'ChampSelect', 'InProgress',
+    'WaitingForStats', 'PreEndOfGame', 'EndOfGame'
+    """
+    session, base_url = get_lcu_session()
+    if not session:
+        return "None"
+
+    try:
+        res = session.get(f"{base_url}/lol-gameflow/v1/gameflow-phase", timeout=2)
+        if res.status_code == 200:
+            return res.json()
+        return "None"
+    except Exception:
+        return "None"
+
+
+def trigger_reconnect():
+    """
+    Sends the official LCU reconnect request (same as clicking the yellow
+    Reconnect button in the League Client).
+    """
+    session, base_url = get_lcu_session()
+    if not session:
+        return {"success": False, "error": "LCU not connected"}
+
+    try:
+        res = session.post(f"{base_url}/lol-gameflow/v1/reconnect", timeout=4)
+        if res.status_code in (200, 201, 204):
+            logger.info("[Loading Delay] Reconnect triggered successfully via LCU API.")
+            return {"success": True, "message": "Reconnecting to game..."}
+        return {"success": False, "status_code": res.status_code, "error": res.text}
+    except Exception as e:
+        logger.error(f"Error triggering reconnect: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def is_game_process_running():
+    """Checks if the actual game client binary (League of Legends.exe) is running."""
+    import subprocess
+    try:
+        res = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq League of Legends.exe", "/NH"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        return "League of Legends.exe" in (res.stdout or "")
+    except Exception:
+        return False
+
+
+def terminate_game_process():
+    """
+    Gracefully terminates the League of Legends.exe match process so the client
+    stays in the Reconnect state while the server waits in loading screen.
+    """
+    import subprocess
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "League of Legends.exe"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        logger.info("[Loading Delay] Game process terminated for delayed loading.")
+        return True
+    except Exception as e:
+        logger.error(f"Error terminating game process: {e}")
+        return False
+
+

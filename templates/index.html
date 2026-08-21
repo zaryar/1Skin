@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HexSkin Studio | LoL Skin Crafter & Auto-Equipper</title>
-    <!-- Fonts: Cinzel for Hextech headers & Inter for high readability UI -->
+    <title>Hextech Hub | HexSkin Studio & HexSocial Friend Manager</title>
+    <!-- Fonts: Cinzel for Hextech headers & Inter for UI -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,9 +24,22 @@
                         </svg>
                     </div>
                     <div class="brand-text">
-                        <h1>HEXSKIN</h1>
-                        <span class="brand-sub">LOOT & LOADOUT STUDIO</span>
+                        <h1 id="brand-title">HEXHUB</h1>
+                        <span id="brand-subtitle" class="brand-sub">HEXTECH SUITE</span>
                     </div>
+                </div>
+
+                <!-- Primary Sub-Application Switcher -->
+                <div class="app-switcher">
+                    <button id="btn-switch-skin" class="app-switch-btn active" data-app="skin">
+                        <span class="app-btn-icon">💎</span>
+                        <span class="app-btn-text">HexSkin Studio</span>
+                    </button>
+                    <button id="btn-switch-social" class="app-switch-btn" data-app="social">
+                        <span class="app-btn-icon">👥</span>
+                        <span class="app-btn-text">Friend Manager</span>
+                        <span id="header-social-badge" class="app-btn-badge hidden">0</span>
+                    </button>
                 </div>
 
                 <div class="status-indicator-wrapper">
@@ -82,6 +95,12 @@
                 </div>
 
                 <div class="header-actions">
+                    <!-- WC / Break Loading Delay Toggle & Config -->
+                    <button id="btn-break-delay-toggle" class="btn-icon btn-break-delay" title="Smart Break Delay (Bio / Restroom Break Controller)">
+                        <span class="break-icon">🚽</span>
+                        <span id="header-delay-text" class="break-status-label">Break Delay: OFF</span>
+                    </button>
+
                     <!-- Sound Toggle -->
                     <button id="btn-sound-toggle" class="btn-icon" title="Toggle Auto-Equip Sound Alert">
                         <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -119,144 +138,609 @@
             </div>
         </header>
 
-        <!-- Main Navigation Tabs -->
-        <nav class="hex-nav-tabs">
-            <button class="nav-tab active" data-tab="crafter">
-                <span class="tab-icon">🛠️</span>
-                <span class="tab-title">Skin Crafter</span>
-                <span class="tab-desc">Missing Skins</span>
-                <span id="badge-crafter-count" class="tab-badge">0</span>
-            </button>
+        <!-- =========================================================================
+             APPLICATION 1: HEXSKIN STUDIO
+             ========================================================================= -->
+        <div id="view-skin-studio" class="app-subview active">
+            <!-- Main Navigation Tabs for Skin Studio -->
+            <nav class="hex-nav-tabs">
+                <button class="nav-tab active" data-tab="crafter">
+                    <span class="tab-icon">🛠️</span>
+                    <span class="tab-title">Skin Crafter</span>
+                    <span class="tab-desc">Missing Skins</span>
+                    <span id="badge-crafter-count" class="tab-badge">0</span>
+                </button>
 
-            <button class="nav-tab" data-tab="disenchanter">
-                <span class="tab-icon">💎</span>
-                <span class="tab-title">Disenchanter</span>
-                <span class="tab-desc">Extra Shards</span>
-                <span id="badge-disenchant-count" class="tab-badge">0</span>
-            </button>
+                <button class="nav-tab" data-tab="disenchanter">
+                    <span class="tab-icon">💎</span>
+                    <span class="tab-title">Disenchanter</span>
+                    <span class="tab-desc">Extra Shards</span>
+                    <span id="badge-disenchant-count" class="tab-badge">0</span>
+                </button>
 
-            <button class="nav-tab" data-tab="loadouts">
-                <span class="tab-icon">🎨</span>
-                <span class="tab-title">Auto-Equipper</span>
-                <span class="tab-desc">Skin Loadouts</span>
-                <span id="badge-loadouts-count" class="tab-badge">0</span>
-            </button>
-        </nav>
+                <button class="nav-tab" data-tab="loadouts">
+                    <span class="tab-icon">🎨</span>
+                    <span class="tab-title">Auto-Equipper</span>
+                    <span class="tab-desc">Skin Loadouts</span>
+                    <span id="badge-loadouts-count" class="tab-badge">0</span>
+                </button>
+            </nav>
 
-        <!-- Main Workspace View -->
-        <main class="hex-main">
+            <!-- Main Workspace View for Skin Studio -->
+            <main class="hex-main">
 
-            <!-- TAB 1: SKIN CRAFTER (Missing Skins) -->
-            <section id="tab-crafter" class="tab-content active">
-                <div class="section-toolbar">
-                    <div class="toolbar-info">
-                        <h2>Skin Crafter <span class="badge-accent">Missing Skins</span></h2>
-                        <p>Owned champions with <strong>no owned skin</strong> that have matching loot shards ready to unlock.</p>
-                    </div>
-                    <div class="toolbar-controls">
-                        <div class="search-box">
-                            <input type="text" id="crafter-search" placeholder="Search champion or skin..." autocomplete="off">
-                            <span class="search-icon">🔍</span>
+                <!-- TAB 1: SKIN CRAFTER (Missing Skins) -->
+                <section id="tab-crafter" class="tab-content active">
+                    <div class="section-toolbar">
+                        <div class="toolbar-info">
+                            <h2>Skin Crafter <span class="badge-accent">Missing Skins</span></h2>
+                            <p>Owned champions with <strong>no owned skin</strong> that have matching loot shards ready to unlock.</p>
+                        </div>
+                        <div class="toolbar-controls">
+                            <div class="search-box">
+                                <input type="text" id="crafter-search" placeholder="Search champion or skin..." autocomplete="off">
+                                <span class="search-icon">🔍</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div id="crafter-summary-banner" class="summary-banner">
-                    <div class="banner-stat">
-                        <span class="stat-label">Available Unlocks</span>
-                        <span id="crafter-total-skins" class="stat-val">0 Skins</span>
-                    </div>
-                    <div class="banner-divider"></div>
-                    <div class="banner-stat">
-                        <span class="stat-label">Your Orange Essence</span>
-                        <span id="crafter-avail-oe" class="stat-val text-gold">0 OE</span>
-                    </div>
-                </div>
-
-                <div id="crafter-cards-container" class="cards-grid">
-                    <!-- Dynamic Champion Shard Cards -->
-                </div>
-
-                <div id="crafter-empty-state" class="empty-state hidden">
-                    <div class="empty-icon">✨</div>
-                    <h3>All Set!</h3>
-                    <p>You already own skins for all your champions, or have no matching skin shards in your loot.</p>
-                </div>
-            </section>
-
-            <!-- TAB 2: DISENCHANTER (Extra Shards) -->
-            <section id="tab-disenchanter" class="tab-content">
-                <div class="section-toolbar">
-                    <div class="toolbar-info">
-                        <h2>Loot Disenchanter <span class="badge-danger">Extra Shards</span></h2>
-                        <p>Shards for champions where you <strong>already own at least one skin</strong>. Disenchant them for Orange Essence.</p>
-                    </div>
-                    <div class="toolbar-controls">
-                        <div class="search-box">
-                            <input type="text" id="disenchant-search" placeholder="Search champion or skin..." autocomplete="off">
-                            <span class="search-icon">🔍</span>
+                    <div id="crafter-summary-banner" class="summary-banner">
+                        <div class="banner-stat">
+                            <span class="stat-label">Available Unlocks</span>
+                            <span id="crafter-total-skins" class="stat-val">0 Skins</span>
+                        </div>
+                        <div class="banner-divider"></div>
+                        <div class="banner-stat">
+                            <span class="stat-label">Your Orange Essence</span>
+                            <span id="crafter-avail-oe" class="stat-val text-gold">0 OE</span>
                         </div>
                     </div>
-                </div>
 
-                <div id="disenchant-summary-banner" class="summary-banner">
-                    <div class="banner-stat">
-                        <span class="stat-label">Shards to Disenchant</span>
-                        <span id="disenchant-total-count" class="stat-val">0 Shards</span>
+                    <div id="crafter-cards-container" class="cards-grid">
+                        <!-- Dynamic Champion Shard Cards -->
                     </div>
-                    <div class="banner-divider"></div>
-                    <div class="banner-stat">
-                        <span class="stat-label">Potential OE Gain</span>
-                        <span id="disenchant-total-oe-gain" class="stat-val text-cyan">+0 OE</span>
+
+                    <div id="crafter-empty-state" class="empty-state hidden">
+                        <div class="empty-icon">✨</div>
+                        <h3>All Set!</h3>
+                        <p>You already own skins for all your champions, or have no matching skin shards in your loot.</p>
                     </div>
-                </div>
+                </section>
 
-                <div id="disenchant-cards-container" class="disenchant-grid">
-                    <!-- Dynamic Disenchant Cards -->
-                </div>
-
-                <div id="disenchant-empty-state" class="empty-state hidden">
-                    <div class="empty-icon">💎</div>
-                    <h3>No Extra Shards</h3>
-                    <p>There are currently no loot shards for champions you already own skins for.</p>
-                </div>
-            </section>
-
-            <!-- TAB 3: AUTO-EQUIPPER LOADOUTS -->
-            <section id="tab-loadouts" class="tab-content">
-                <div class="section-toolbar">
-                    <div class="toolbar-info">
-                        <h2>Auto-Equipper Loadouts <span class="badge-gold">Arena / SoloQ / ARAM</span></h2>
-                        <p>Choose your preferred skin per champion. The tool automatically equips it during <strong>Champion Select</strong>.</p>
-                    </div>
-                    <div class="toolbar-controls">
-                        <div class="filter-pills">
-                            <button class="filter-pill active" data-filter="all">All (<span id="loadouts-count-all">0</span>)</button>
-                            <button class="filter-pill" data-filter="configured">Equipped (<span id="loadouts-count-configured">0</span>)</button>
-                            <button class="filter-pill" data-filter="unconfigured">Unset (<span id="loadouts-count-unconfigured">0</span>)</button>
+                <!-- TAB 2: DISENCHANTER (Extra Shards) -->
+                <section id="tab-disenchanter" class="tab-content">
+                    <div class="section-toolbar">
+                        <div class="toolbar-info">
+                            <h2>Loot Disenchanter <span class="badge-danger">Extra Shards</span></h2>
+                            <p>Shards for champions where you <strong>already own at least one skin</strong>. Disenchant them for Orange Essence.</p>
                         </div>
-                        <div class="search-box">
-                            <input type="text" id="loadouts-search" placeholder="Filter champions..." autocomplete="off">
-                            <span class="search-icon">🔍</span>
+                        <div class="toolbar-controls">
+                            <div class="search-box">
+                                <input type="text" id="disenchant-search" placeholder="Search champion or skin..." autocomplete="off">
+                                <span class="search-icon">🔍</span>
+                            </div>
                         </div>
-                        <button id="btn-open-bravery-modal" class="btn-bravery-sync" title="Sync all preferred skins for Arena Bravery via Custom Lobby">
-                            <span>⚡</span> Bravery Sync
-                        </button>
+                    </div>
+
+                    <div id="disenchant-summary-banner" class="summary-banner">
+                        <div class="banner-stat">
+                            <span class="stat-label">Shards to Disenchant</span>
+                            <span id="disenchant-total-count" class="stat-val">0 Shards</span>
+                        </div>
+                        <div class="banner-divider"></div>
+                        <div class="banner-stat">
+                            <span class="stat-label">Potential OE Gain</span>
+                            <span id="disenchant-total-oe-gain" class="stat-val text-cyan">+0 OE</span>
+                        </div>
+                    </div>
+
+                    <div id="disenchant-cards-container" class="disenchant-grid">
+                        <!-- Dynamic Disenchant Cards -->
+                    </div>
+
+                    <div id="disenchant-empty-state" class="empty-state hidden">
+                        <div class="empty-icon">💎</div>
+                        <h3>No Extra Shards</h3>
+                        <p>There are currently no loot shards for champions you already own skins for.</p>
+                    </div>
+                </section>
+
+                <!-- TAB 3: AUTO-EQUIPPER LOADOUTS -->
+                <section id="tab-loadouts" class="tab-content">
+                    <div class="section-toolbar">
+                        <div class="toolbar-info">
+                            <h2>Auto-Equipper Loadouts <span class="badge-gold">Arena / SoloQ / ARAM</span></h2>
+                            <p>Choose your preferred skin per champion. The tool automatically equips it during <strong>Champion Select</strong>.</p>
+                        </div>
+                        <div class="toolbar-controls">
+                            <div class="filter-pills">
+                                <button class="filter-pill active" data-filter="all">All (<span id="loadouts-count-all">0</span>)</button>
+                                <button class="filter-pill" data-filter="configured">Equipped (<span id="loadouts-count-configured">0</span>)</button>
+                                <button class="filter-pill" data-filter="unconfigured">Unset (<span id="loadouts-count-unconfigured">0</span>)</button>
+                            </div>
+                            <div class="search-box">
+                                <input type="text" id="loadouts-search" placeholder="Filter champions..." autocomplete="off">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                            <button id="btn-open-bravery-modal" class="btn-bravery-sync" title="Sync all preferred skins for Arena Bravery via Custom Lobby">
+                                <span>⚡</span> Bravery Sync
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="loadouts-container" class="loadouts-list">
+                        <!-- Dynamic Champion Loadout Rows -->
+                    </div>
+
+                    <div id="loadouts-empty-state" class="empty-state hidden">
+                        <div class="empty-icon">🔍</div>
+                        <h3>No Champions Found</h3>
+                        <p>No champions match your search or filter criteria.</p>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+
+        <!-- =========================================================================
+             APPLICATION 2: HEXSOCIAL FRIEND MANAGER (Dedicated Distinct Application)
+             ========================================================================= -->
+        <div id="view-social-hub" class="app-subview">
+            <div class="social-layout">
+                <!-- Social Left Sidebar -->
+                <aside class="social-sidebar">
+                    <!-- Personal Presence / Status Card -->
+                    <div class="social-presence-card">
+                        <div class="presence-header">
+                            <div class="presence-avatar-wrap">
+                                <img id="social-my-avatar" src="" alt="My Avatar" class="presence-avatar">
+                                <span id="social-my-status-dot" class="presence-dot status-online"></span>
+                            </div>
+                            <div class="presence-user-meta">
+                                <div class="presence-name-row">
+                                    <span id="social-my-name" class="presence-name">Summoner</span>
+                                    <span id="social-my-tag" class="presence-tag">#EUW</span>
+                                </div>
+                                <div class="presence-select-wrap">
+                                    <select id="select-my-availability" class="presence-select">
+                                        <option value="online">🟢 Online (Chat)</option>
+                                        <option value="away">🟡 Away</option>
+                                        <option value="dnd">🔴 Do Not Disturb</option>
+                                        <option value="offline">⚪ Invisible / Offline</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="presence-status-input-wrap">
+                            <input type="text" id="input-my-status-msg" placeholder="Set custom status message..." maxlength="120" autocomplete="off">
+                            <button id="btn-save-my-status" class="btn-status-save" title="Save status message">✓</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Navigation Filters -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">VIEWS</div>
+                        <nav class="sidebar-nav">
+                            <button class="sidebar-nav-item active" data-view="all">
+                                <span class="nav-icon">👥</span>
+                                <span class="nav-label">All Friends</span>
+                                <span id="badge-view-all" class="nav-badge">0</span>
+                            </button>
+                            <button class="sidebar-nav-item" data-view="online">
+                                <span class="nav-icon">🟢</span>
+                                <span class="nav-label">Online & Active</span>
+                                <span id="badge-view-online" class="nav-badge text-green">0</span>
+                            </button>
+                            <button class="sidebar-nav-item" data-view="ingame">
+                                <span class="nav-icon">⚔️</span>
+                                <span class="nav-label">In Game / Select</span>
+                                <span id="badge-view-ingame" class="nav-badge text-cyan">0</span>
+                            </button>
+                            <button class="sidebar-nav-item" data-view="away">
+                                <span class="nav-icon">🟡</span>
+                                <span class="nav-label">Away / Idle</span>
+                                <span id="badge-view-away" class="nav-badge">0</span>
+                            </button>
+                            <button class="sidebar-nav-item" data-view="offline">
+                                <span class="nav-icon">⚪</span>
+                                <span class="nav-label">Offline</span>
+                                <span id="badge-view-offline" class="nav-badge text-muted">0</span>
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Folders / Groups Section -->
+                    <div class="sidebar-section folders-section">
+                        <div class="sidebar-section-header">
+                            <span class="sidebar-section-title">FOLDERS & GROUPS</span>
+                            <button id="btn-add-folder-quick" class="btn-sidebar-action" title="Create New Folder">
+                                <span>+ New</span>
+                            </button>
+                        </div>
+                        <div id="social-groups-list" class="sidebar-groups-list">
+                            <!-- Dynamic Folders rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Social Tools Section -->
+                    <div class="sidebar-section social-tools-section">
+                        <div class="sidebar-section-title">SOCIAL TOOLS</div>
+                        <nav class="sidebar-nav">
+                            <button id="btn-open-requests-modal" class="sidebar-nav-item">
+                                <span class="nav-icon">📬</span>
+                                <span class="nav-label">Friend Requests</span>
+                                <span id="badge-requests-count" class="nav-badge badge-glow">0</span>
+                            </button>
+                            <button id="btn-open-blocked-modal" class="sidebar-nav-item">
+                                <span class="nav-icon">🚫</span>
+                                <span class="nav-label">Blocked Players</span>
+                                <span id="badge-blocked-count" class="nav-badge">0</span>
+                            </button>
+                        </nav>
+                    </div>
+                </aside>
+
+                <!-- Social Main Workspace -->
+                <main class="social-main">
+                    <!-- Top Social Toolbar -->
+                    <div class="social-toolbar">
+                        <div class="social-toolbar-left">
+                            <div class="view-header-title">
+                                <h2 id="social-current-view-title">All Friends</h2>
+                                <span id="social-filtered-count-badge" class="count-pill">0 Friends</span>
+                            </div>
+                            <div class="search-box social-search-box">
+                                <input type="text" id="social-search" placeholder="Search friends by name, #tag, note, or folder..." autocomplete="off">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                        </div>
+
+                        <div class="social-toolbar-right">
+                            <!-- Status Filter Pills -->
+                            <div class="filter-pills social-filters">
+                                <button class="filter-pill active" data-social-filter="all">All</button>
+                                <button class="filter-pill" data-social-filter="online">Online</button>
+                                <button class="filter-pill" data-social-filter="ingame">In Game</button>
+                                <button class="filter-pill" data-social-filter="offline">Offline</button>
+                            </div>
+
+                            <!-- Sorting Select -->
+                            <div class="sort-wrap">
+                                <span class="sort-label">Sort:</span>
+                                <select id="select-social-sort" class="social-sort-select">
+                                    <option value="status">Presence (Online first)</option>
+                                    <option value="name">Riot ID (A-Z)</option>
+                                    <option value="folder">Folder / Group</option>
+                                    <option value="rank">Rank Tier</option>
+                                </select>
+                            </div>
+
+                            <!-- Layout View Toggle -->
+                            <div class="layout-toggle">
+                                <button id="btn-view-grid" class="btn-layout-toggle active" title="Grid Card View">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                </button>
+                                <button id="btn-view-list" class="btn-layout-toggle" title="Compact List View">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                </button>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <button id="btn-open-add-friend" class="btn-primary btn-add-friend">
+                                <span>➕</span> Add Friend
+                            </button>
+                            <button id="btn-open-folder-manager" class="btn-ghost" title="Manage & Organize Folders">
+                                <span>📁</span> Folders
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Batch Operations Bar (Revealed when items checked) -->
+                    <div id="social-batch-bar" class="batch-bar hidden">
+                        <div class="batch-bar-left">
+                            <span class="batch-icon">✨</span>
+                            <span id="batch-selected-text" class="batch-text"><strong>0</strong> friends selected</span>
+                            <button id="btn-batch-select-all" class="btn-link">Select All in View</button>
+                            <button id="btn-batch-clear" class="btn-link">Deselect All</button>
+                        </div>
+                        <div class="batch-bar-right">
+                            <div class="batch-move-group">
+                                <span class="batch-action-label">Move to:</span>
+                                <select id="select-batch-folder" class="batch-folder-select">
+                                    <!-- Dynamic folder options -->
+                                </select>
+                                <button id="btn-execute-batch-move" class="btn-primary btn-sm">Move Selected</button>
+                            </div>
+                            <div class="batch-divider"></div>
+                            <button id="btn-execute-batch-remove" class="btn-danger btn-sm" title="Remove selected friends from friend list">
+                                <span>🗑️</span> Remove Friends
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Friends Cards Grid Container -->
+                    <div id="social-friends-container" class="social-friends-grid">
+                        <!-- Dynamic Friend Cards rendered here -->
+                    </div>
+
+                    <!-- Social Empty State -->
+                    <div id="social-empty-state" class="empty-state hidden">
+                        <div class="empty-icon">👥</div>
+                        <h3 id="social-empty-title">No Friends Found</h3>
+                        <p id="social-empty-desc">No friends match your current search, filter, or selected folder.</p>
+                        <button id="btn-empty-reset" class="btn-ghost btn-sm" style="margin-top: 15px;">Reset Filters</button>
+                    </div>
+                </main>
+
+                <!-- Friend Profile Inspector Slide-over Drawer -->
+                <aside id="social-profile-drawer" class="social-drawer hidden">
+                    <div class="drawer-header">
+                        <div class="drawer-title">FRIEND PROFILE</div>
+                        <button id="btn-close-drawer" class="btn-icon drawer-close" title="Close Profile">&times;</button>
+                    </div>
+
+                    <div class="drawer-body">
+                        <!-- Profile Card Header -->
+                        <div class="drawer-profile-hero">
+                            <div class="drawer-avatar-wrap">
+                                <img id="drawer-avatar" src="" alt="Avatar" class="drawer-avatar-img">
+                                <span id="drawer-level" class="level-badge">1</span>
+                                <span id="drawer-status-dot" class="presence-dot status-offline"></span>
+                            </div>
+                            <div class="drawer-user-info">
+                                <h3 id="drawer-riot-name">Summoner</h3>
+                                <span id="drawer-riot-tag" class="drawer-tag">#EUW</span>
+                                <div id="drawer-presence-badge" class="drawer-presence-pill status-offline">Offline</div>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Activity / Game Details -->
+                        <div class="drawer-section">
+                            <div class="drawer-section-heading">CURRENT ACTIVITY</div>
+                            <div id="drawer-activity-card" class="drawer-activity-card">
+                                <div id="drawer-activity-icon" class="activity-icon">🎮</div>
+                                <div class="activity-meta">
+                                    <div id="drawer-activity-title" class="activity-title">Offline</div>
+                                    <div id="drawer-activity-detail" class="activity-desc">Not currently in League</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranked Tier & Stats -->
+                        <div class="drawer-section">
+                            <div class="drawer-section-heading">RANKED & STATS</div>
+                            <div class="drawer-rank-card">
+                                <div class="rank-badge-wrap">
+                                    <span id="drawer-rank-icon" class="rank-emblem-text">🏆</span>
+                                </div>
+                                <div class="rank-meta">
+                                    <div id="drawer-rank-tier" class="rank-tier-name">Unranked</div>
+                                    <div id="drawer-rank-stats" class="rank-sub">0 Wins • 0 Losses</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Organization & Folder -->
+                        <div class="drawer-section">
+                            <div class="drawer-section-heading">FOLDER ASSIGNMENT</div>
+                            <div class="drawer-field-row">
+                                <select id="drawer-select-folder" class="drawer-input-select">
+                                    <!-- Dynamic groups -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Custom Note Editor -->
+                        <div class="drawer-section">
+                            <div class="drawer-section-heading">FRIEND NOTE / NICKNAME</div>
+                            <div class="drawer-note-editor">
+                                <textarea id="drawer-note-text" placeholder="Add a private note about this friend (e.g. Clash ADC, School buddy)..." maxlength="200" rows="3"></textarea>
+                                <button id="btn-drawer-save-note" class="btn-primary btn-sm">Save Note</button>
+                            </div>
+                        </div>
+
+                        <!-- Actions Section -->
+                        <div class="drawer-section drawer-actions-section">
+                            <div class="drawer-section-heading">ACTIONS</div>
+                            <div class="drawer-action-buttons">
+                                <button id="btn-drawer-invite" class="btn-primary drawer-btn">
+                                    <span>🎮</span> Invite to Lobby
+                                </button>
+                                <button id="btn-drawer-remove" class="btn-danger-outline drawer-btn">
+                                    <span>🗑️</span> Remove Friend
+                                </button>
+                                <button id="btn-drawer-block" class="btn-danger-outline drawer-btn">
+                                    <span>🚫</span> Block Player
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             MODALS & DIALOGS
+             ========================================================================= -->
+
+        <!-- 1. Add Friend Modal -->
+        <div id="modal-add-friend" class="modal-overlay hidden">
+            <div class="hex-modal social-modal">
+                <div class="modal-gem">➕</div>
+                <h2>Add New Friend</h2>
+                <p>Send a friend request using the player's <strong>Riot ID</strong>.</p>
+                <div class="modal-form">
+                    <div class="form-group">
+                        <label for="input-add-riot-id">Riot ID (GameName#Tag)</label>
+                        <input type="text" id="input-add-riot-id" class="hex-input" placeholder="e.g. Faker#KR1 or Player#EUW" autocomplete="off">
+                    </div>
+                    <div class="modal-tip">
+                        <span>💡 Tip:</span> Make sure to include the tag after the hash symbol (#).
+                    </div>
+                </div>
+                <div class="modal-btn-row">
+                    <button id="btn-submit-add-friend" class="btn-primary">Send Request</button>
+                    <button id="btn-close-add-modal" class="btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Manage Folders Modal -->
+        <div id="modal-manage-folders" class="modal-overlay hidden">
+            <div class="hex-modal social-modal modal-large">
+                <div class="modal-gem">📁</div>
+                <h2>Folder & Group Manager</h2>
+                <p>Organize your League friends into custom categorized folders.</p>
+
+                <!-- Create New Folder Row -->
+                <div class="new-folder-bar">
+                    <input type="text" id="input-new-folder-name" class="hex-input" placeholder="New folder name (e.g. Duo, Clash, IRL)..." maxlength="30" autocomplete="off">
+                    <button id="btn-submit-create-folder" class="btn-primary">Create Folder</button>
+                </div>
+
+                <!-- Existing Folders List -->
+                <div class="folders-manage-container">
+                    <div class="folders-manage-header">
+                        <span>FOLDER NAME</span>
+                        <span>FRIENDS</span>
+                        <span>ACTIONS</span>
+                    </div>
+                    <div id="folders-manage-list" class="folders-manage-list">
+                        <!-- Dynamic folder management rows -->
                     </div>
                 </div>
 
-                <div id="loadouts-container" class="loadouts-list">
-                    <!-- Dynamic Champion Loadout Rows -->
+                <div class="modal-btn-row">
+                    <button id="btn-close-folder-modal" class="btn-ghost">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Friend Requests Modal -->
+        <div id="modal-friend-requests" class="modal-overlay hidden">
+            <div class="hex-modal social-modal modal-large">
+                <div class="modal-gem">📬</div>
+                <h2>Friend Requests</h2>
+                <p>Manage pending incoming and outgoing friend requests.</p>
+
+                <!-- Tabs: Incoming / Outgoing -->
+                <div class="modal-subtabs">
+                    <button id="btn-req-tab-incoming" class="modal-subtab active" data-reqtab="incoming">
+                        Incoming (<span id="req-count-incoming">0</span>)
+                    </button>
+                    <button id="btn-req-tab-outgoing" class="modal-subtab" data-reqtab="outgoing">
+                        Outgoing (<span id="req-count-outgoing">0</span>)
+                    </button>
                 </div>
 
-                <div id="loadouts-empty-state" class="empty-state hidden">
-                    <div class="empty-icon">🔍</div>
-                    <h3>No Champions Found</h3>
-                    <p>No champions match your search or filter criteria.</p>
+                <div id="requests-list-container" class="requests-list">
+                    <!-- Dynamic friend requests list -->
                 </div>
-            </section>
 
-        </main>
+                <div class="modal-btn-row">
+                    <button id="btn-close-requests-modal" class="btn-ghost">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Blocked Players Modal -->
+        <div id="modal-blocked-players" class="modal-overlay hidden">
+            <div class="hex-modal social-modal modal-large">
+                <div class="modal-gem">🚫</div>
+                <h2>Blocked Players</h2>
+                <p>Review and manage players you have blocked from messaging and inviting you.</p>
+
+                <div id="blocked-list-container" class="blocked-list">
+                    <!-- Dynamic blocked list -->
+                </div>
+
+                <div class="modal-btn-row">
+                    <button id="btn-close-blocked-modal" class="btn-ghost">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Generic Confirmation Modal -->
+        <div id="modal-social-confirm" class="modal-overlay hidden">
+            <div class="hex-modal social-modal">
+                <div id="confirm-modal-icon" class="modal-gem">⚠️</div>
+                <h2 id="confirm-modal-title">Confirm Action</h2>
+                <p id="confirm-modal-msg">Are you sure you want to perform this action?</p>
+                <div class="modal-btn-row">
+                    <button id="btn-confirm-yes" class="btn-danger">Confirm</button>
+                    <button id="btn-confirm-no" class="btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Smart Break Delay Settings Modal -->
+        <div id="modal-break-delay-settings" class="modal-overlay hidden">
+            <div class="hex-modal social-modal">
+                <div class="modal-gem">🚽</div>
+                <h2>Smart Loading Delay (Bio Break)</h2>
+                <p>
+                    Automatically delays launching into match loading screen right after Champion Select, giving you time for a quick restroom or drink break.
+                </p>
+
+                <div class="modal-form">
+                    <div class="delay-toggle-card">
+                        <div class="delay-toggle-info">
+                            <strong>Enable Break Delay Mode</strong>
+                            <small>Gracefully delays the game process launch so the Riot server waits in the loading screen.</small>
+                        </div>
+                        <input type="checkbox" id="switch-delay-enable" class="hex-toggle-checkbox">
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                            <label for="range-delay-seconds" style="margin-bottom:0;">Delay Duration (Safety Timer)</label>
+                            <span id="label-delay-seconds" class="count-pill">75 Seconds</span>
+                        </div>
+                        <input type="range" id="range-delay-seconds" min="30" max="90" step="5" value="75" class="hex-range-slider">
+                        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-top:4px;">
+                            <span>30s (Short)</span>
+                            <span style="color:var(--gold-primary); font-weight:700;">75s (Recommended)</span>
+                            <span>90s (Maximum)</span>
+                        </div>
+                    </div>
+
+                    <div class="modal-tip">
+                        <span>💡 Riot Server Timings:</span> The Riot server waits ~90–180s in the loading screen for connecting players. At 75s, you load directly at ~0:00 on the fountain — <strong>50 seconds before minion spawn (1:05)</strong> with 0% remake risk!
+                    </div>
+                </div>
+
+                <div class="modal-btn-row">
+                    <button id="btn-save-delay-settings" class="btn-primary">Save Settings</button>
+                    <button id="btn-close-delay-modal" class="btn-ghost">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Active Break Delay Floating Banner / Giant Reconnect Button -->
+        <div id="break-delay-active-banner" class="delay-active-banner hidden">
+            <div class="delay-banner-content">
+                <div class="delay-banner-left">
+                    <div class="delay-pulse-gem">⏳</div>
+                    <div class="delay-banner-text">
+                        <div class="delay-title">MATCH LOADING PAUSED (BREAK DELAY)</div>
+                        <div class="delay-subtitle">Riot is waiting in the loading screen. Auto-reconnecting in:</div>
+                    </div>
+                </div>
+
+                <div class="delay-timer-center">
+                    <span id="delay-countdown-display" class="countdown-digits">01:15</span>
+                    <div class="delay-progress-bar">
+                        <div id="delay-progress-fill" class="delay-progress-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <div class="delay-banner-actions">
+                    <button id="btn-reconnect-now-banner" class="btn-primary btn-reconnect-giant">
+                        <span>🚀</span> RECONNECT NOW
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Floating Toast Container for Feedback -->
         <div id="toast-container" class="toast-container"></div>
